@@ -15,6 +15,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <unistd.h>
 
 namespace godot {
 
@@ -79,6 +80,12 @@ String WowLoader::client_data_dir() {
 			return arg.trim_prefix("--data=").trim_suffix("/");
 		}
 	}
+	// GDExtension feature tags use "android", but OS::has_feature only matches
+	// the platform name "Android", so an exported build was looking up "Data".
+	const String os_name = OS::get_singleton()->get_name();
+	if (os_name == "Android" || OS::get_singleton()->has_feature("android")) {
+		return OS::get_singleton()->get_user_data_dir().path_join("Data");
+	}
 	// An exported build sits in the player's client folder, next to its Data.
 	if (OS::get_singleton()->has_feature("template")) {
 		return OS::get_singleton()->get_executable_path().get_base_dir().path_join("Data");
@@ -109,8 +116,11 @@ Dictionary WowLoader::profile() {
 // Without the archives there is nothing to draw, so a game says where it looked and stops.
 void WowLoader::report_missing_data(const String &data_dir) {
 	const String version = wow_profile().version;
-	const String message = "No World of Warcraft " + version + " data was found in:\n" + data_dir +
-			"\n\nPut this build in a " + version + " client folder, beside its Data folder, and start it again.";
+	const bool android = OS::get_singleton()->get_name() == "Android" || OS::get_singleton()->has_feature("android");
+	const String hint = android
+			? String("\n\nCopy the Data folder from the Android package into that directory, then start again.")
+			: String("\n\nPut this build in a ") + version + " client folder, beside its Data folder, and start it again.";
+	const String message = "No World of Warcraft " + version + " data was found in:\n" + data_dir + hint;
 	UtilityFunctions::push_error(message);
 	if (OS::get_singleton()->has_feature("editor")) {
 		return;

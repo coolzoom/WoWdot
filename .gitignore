@@ -6,6 +6,9 @@ export.cfg
 export_credentials.cfg
 *.tmp
 
+# Local Android SDK and NDK for this repo. Other projects keep their own copies.
+/.android/
+
 # Build output
 bin/
 *.os
