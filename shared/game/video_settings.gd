@@ -108,6 +108,12 @@ func _apply_resolution(mode: DisplayServer.WindowMode) -> void:
 	elif resolution != Vector2i.ZERO:
 		scale = minf(float(resolution.x) / screen.x, float(resolution.y) / screen.y)
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	# The unfolded panel is about 5.5 million pixels. Half resolution is the
+	# fill-rate cut; a manually chosen smaller size can go lower still.
+	# Forward Mobile has no FSR1, so the upscale is bilinear.
+	if OS.get_name() == "Android":
+		scale = minf(scale, 0.5)
+		root.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	root.scaling_3d_scale = scale
 
 

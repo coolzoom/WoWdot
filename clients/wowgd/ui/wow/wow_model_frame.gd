@@ -55,6 +55,10 @@ func _ready() -> void:
 	# The scene's Environment is one resource for every frame; each lights and fogs its own.
 	_environment = _environment.duplicate()
 	(%Environment as WorldEnvironment).environment = _environment
+	# Hidden panels keep their frames in the tree. UPDATE_ALWAYS renders every one of them each
+	# frame, and UPDATE_WHEN_PARENT_VISIBLE follows the root viewport, which always draws.
+	# On a phone that was four fifths of the GPU time. See docs/android-performance.md.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	texture = _viewport.get_texture()
 	_apply_fog()
 	_apply_glow()

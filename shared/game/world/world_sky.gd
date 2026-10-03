@@ -112,7 +112,8 @@ func update() -> void:
 	settings.fog_depth_end = sample.fog_end
 	settings.fog_sky_affect = 1.0 if underwater else 0.0
 	# ponytail: Godot's own glow stands in for the stock FFXGlow pass, scaled by the light's glow.
-	settings.glow_enabled = sample.glow > 0.0
+	# Glow is several fullscreen passes, so the phone leaves it off.
+	settings.glow_enabled = sample.glow > 0.0 and OS.get_name() != "Android"
 	settings.glow_intensity = sample.glow * GLOW_SCALE
 	var sky: ShaderMaterial = settings.sky.sky_material
 	for uniform: StringName in SKY_UNIFORMS:

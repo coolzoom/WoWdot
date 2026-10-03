@@ -82,6 +82,20 @@ var _rider: Node3D
 var _weapons: Array = []
 var _sheath_state: ItemModels.SheathState = ItemModels.SheathState.UNARMED
 var _area: int = -1
+# `--perf` prints a frame-time breakdown every 5 seconds. See docs/android-performance.md.
+var _perf: bool = "--perf" in OS.get_cmdline_args() or "--perf" in OS.get_cmdline_user_args()
+var _perf_wait: float = 0.0
+var _perf_hooked: bool = false
+var _perf_t0: int = 0
+var _perf_t1: int = 0
+var _perf_last: int = 0
+var _perf_frames: int = 0
+var _perf_frame: int = 0
+var _perf_scripts: int = 0
+var _perf_draw: int = 0
+var _perf_phys: float = 0.0
+var _perf_rcpu: float = 0.0
+var _perf_gpu: float = 0.0
 var _hovered: int = 0
 var _pending_object: int = 0
 var _pending_transport: int = 0
@@ -157,7 +171,57 @@ func _ready() -> void:
 	_death.spirit_healer_offered.connect(_on_spirit_healer_offered)
 
 
+func _perf_begin() -> void:
+	if _perf_hooked:
+		return
+	_perf_hooked = true
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	get_tree().process_frame.connect(func() -> void: _perf_t0 = Time.get_ticks_usec())
+	RenderingServer.frame_pre_draw.connect(func() -> void:
+		_perf_t1 = Time.get_ticks_usec()
+		_perf_scripts += _perf_t1 - _perf_t0
+	)
+	RenderingServer.frame_post_draw.connect(func() -> void:
+		var now: int = Time.get_ticks_usec()
+		_perf_draw += now - _perf_t1
+		if _perf_last > 0:
+			_perf_frame += now - _perf_last
+		_perf_last = now
+		_perf_frames += 1
+		var vp: RID = get_viewport().get_viewport_rid()
+		_perf_rcpu += RenderingServer.viewport_get_measured_render_time_cpu(vp)
+		_perf_gpu += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		_perf_phys += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	)
+
+
 func _process(_delta: float) -> void:
+	if _perf:
+		_perf_begin()
+		_perf_wait += _delta
+		if _perf_wait >= 5.0 and _perf_frames > 0:
+			_perf_wait = 0.0
+			var n: float = _perf_frames
+			print("PERF fps=%.1f frame=%.1f scripts=%.1f draw_call=%.1f physics=%.1f render_cpu=%.1f gpu=%.1f draws=%d prims=%d nodes=%d scale=%.2f" % [
+				Engine.get_frames_per_second(),
+				_perf_frame / n / 1000.0,
+				_perf_scripts / n / 1000.0,
+				_perf_draw / n / 1000.0,
+				_perf_phys / n,
+				_perf_rcpu / n,
+				_perf_gpu / n,
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+				int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
+				get_viewport().scaling_3d_scale,
+			])
+			_perf_frames = 0
+			_perf_frame = 0
+			_perf_scripts = 0
+			_perf_draw = 0
+			_perf_phys = 0.0
+			_perf_rcpu = 0.0
+			_perf_gpu = 0.0
 	if not _player.active and _map.is_ground_ready(_player.global_position):
 		_player.active = true
 		player_ready.emit()

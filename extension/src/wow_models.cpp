@@ -19,6 +19,7 @@
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/concave_polygon_shape3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/multi_mesh.hpp>
 #include <godot_cpp/classes/multi_mesh_instance3d.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
@@ -1261,7 +1262,13 @@ static float doodad_range(const M2Model &model, const std::vector<Transform3D> &
 		bounds = i == 0 ? box : bounds.merge(box);
 	}
 	const float own = std::clamp(model.boundRadius * DOODAD_RANGE_PER_YARD, DOODAD_NEAREST_RANGE, DOODAD_FURTHEST_RANGE);
-	return own + bounds.size.length() * 0.5f;
+	float range = own + bounds.size.length() * 0.5f;
+	// Fog ends near 500 yards. The phone culls props around 400 so a MultiMesh
+	// is not kept alive out to 1000 yards from the middle of its cell.
+	if (OS::get_singleton()->get_name() == "Android") {
+		range = std::min(range, 400.0f);
+	}
+	return range;
 }
 
 Node3D *WowLoader::build_static_models(const Array &placements) {
