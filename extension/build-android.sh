@@ -119,15 +119,17 @@ package_resources() {
   [[ "$packed" != 0 ]] || die "no MPQ archives in ${src}"
   cp -f "${ROOT}/translations/wowgd/"*.csv "${PACKAGE_DIR}/translations/"
   cat >"${PACKAGE_DIR}/INSTALL.txt" <<'EOF'
-Install the APK, then copy Data and translations into the app files directory:
+Install the APK, then copy Data and translations into the app's private files directory.
+That is the path OS.get_user_data_dir() returns, not the sdcard Android/data folder:
 
-  /sdcard/Android/data/com.wowgd.client/files/Data
-  /sdcard/Android/data/com.wowgd.client/files/translations
+  /data/data/com.wowgd.client/files/Data
+  /data/data/com.wowgd.client/files/translations
 
-Open the app once so Android creates that directory. From this folder, run:
+On MuMu, adb is root. From this folder, run:
 
-  adb push Data /sdcard/Android/data/com.wowgd.client/files/Data
-  adb push translations /sdcard/Android/data/com.wowgd.client/files/translations
+  adb root
+  adb push Data /data/data/com.wowgd.client/files/Data
+  adb push translations /data/data/com.wowgd.client/files/translations
 EOF
   printf 'Packaged %s MPQ archives and translations in %s\n' "$packed" "$PACKAGE_DIR"
 }

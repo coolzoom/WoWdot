@@ -20,7 +20,8 @@ static func directory() -> String:
 				.path_join(project.to_lower()).simplify_path()
 	# The Android package has no folder beside the executable. Translations are
 	# copied into the app files directory with the Data archives.
-	if OS.has_feature("android"):
+	# OS.has_feature("android") does not match an exported build; get_name() does.
+	if OS.get_name() == "Android" or OS.has_feature("android"):
 		return OS.get_user_data_dir().path_join("translations")
 	return OS.get_executable_path().get_base_dir().path_join("translations")
 

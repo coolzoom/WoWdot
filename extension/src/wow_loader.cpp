@@ -15,7 +15,6 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
-#include <unistd.h>
 
 namespace godot {
 
@@ -126,8 +125,9 @@ void WowLoader::report_missing_data(const String &data_dir) {
 		return;
 	}
 	OS::get_singleton()->alert(message, "World of Warcraft data not found");
-	// The engine is still starting, so a quit request would let the load carry on and crash.
-	std::exit(1);
+	// The engine is still starting, so a quit request would let the load carry on.
+	// std::exit runs static destructors while the render thread still locks them.
+	std::_Exit(1);
 }
 
 Ref<WowLoader> WowLoader::get_shared() {
