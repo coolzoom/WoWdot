@@ -8,7 +8,8 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/shader.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
-
+#include <godot_cpp/classes/text_server.hpp>
+#include <godot_cpp/classes/viewport.hpp>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -16,6 +17,8 @@
 namespace godot {
 
 namespace {
+
+const BitField<TextServer::JustificationFlag> JUSTIFY_FLAGS = TextServer::JUSTIFICATION_KASHIDA | TextServer::JUSTIFICATION_WORD_BOUND;
 
 const char *DESATURATE = R"(
 shader_type canvas_item;
@@ -378,7 +381,13 @@ void WowUI::draw_text(const TextLayout &layout, const FontInfo &font, const Rect
 	float ascent = static_cast<float>(f->get_ascent(size));
 	float scale = static_cast<float>(size) / std::max(1.0f, font.height);
 	Vector2 shadow = Vector2(font.shadow_offset.x, -font.shadow_offset.y) * scale;
-	int outline = font.outline ? std::max(1, static_cast<int>(std::lround(scale * (font.thick ? 2.0f : 1.0f)))) : 0;
+	// The outline width is in canvas units and grows with the window's oversampling, so a THICK
+	// outline twice the NORMAL one smears the glyphs on a high-density screen.
+	int outline = font.outline ? std::max(1, static_cast<int>(std::lround(scale * (font.thick ? 3.0f : 2.0f)))) : 0;
+	// Font::draw_string, unlike CanvasItem::draw_string, does not pick up the viewport's
+	// oversampling, so glyphs would rasterize at canvas size and stretch with the window.
+	Viewport *viewport = get_viewport();
+	float oversampling = viewport ? viewport->get_oversampling() : 1.0f;
 	RID rid = item(base);
 	for (const TextLine &line : layout.lines) {
 		float x = rect.position.x;
@@ -396,12 +405,12 @@ void WowUI::draw_text(const TextLayout &layout, const FontInfo &font, const Rect
 			if (font.shadow.a > 0.0f && shadow != Vector2()) {
 				Color shade = font.shadow;
 				shade.a *= color.a;
-				f->draw_string(rid, at + shadow, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, shade);
+				f->draw_string(rid, at + shadow, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, shade, JUSTIFY_FLAGS, TextServer::DIRECTION_AUTO, TextServer::ORIENTATION_HORIZONTAL, oversampling);
 			}
 			if (outline > 0) {
-				f->draw_string_outline(rid, at, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, outline * 2, Color(0, 0, 0, color.a));
+				f->draw_string_outline(rid, at, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, outline, Color(0, 0, 0, color.a), JUSTIFY_FLAGS, TextServer::DIRECTION_AUTO, TextServer::ORIENTATION_HORIZONTAL, oversampling);
 			}
-			f->draw_string(rid, at, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color);
+			f->draw_string(rid, at, run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color, JUSTIFY_FLAGS, TextServer::DIRECTION_AUTO, TextServer::ORIENTATION_HORIZONTAL, oversampling);
 			x += static_cast<float>(f->get_string_size(run.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x);
 		}
 		y += layout.line_height;
