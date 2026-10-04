@@ -2079,6 +2079,11 @@ struct WowUILua {
 			 w.owner_anchor = lua_isstring(L, 3) ? to_string(L, 3) : String("ANCHOR_LEFT");
 			 w.owner_offset = Vector2(num(L, 4), num(L, 5));
 			 w.min_width = 0.0f;
+			 // GameTooltip_SetDefaultAnchor sets its own point after ANCHOR_NONE; a point left over
+			 // from the last owner would pin the other edge and stretch the tooltip between them.
+			 if (w.owner_anchor == "ANCHOR_NONE") {
+				 w.anchors.clear();
+			 }
 			 ui_->tooltip_clear(id_);
 			 ui_->set_shown(id_, false);
 			 ui_->anchor_tooltip(w);

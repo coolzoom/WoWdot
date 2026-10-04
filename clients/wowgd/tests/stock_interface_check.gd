@@ -80,6 +80,22 @@ func _run(layer: CanvasLayer, hud: Hud) -> void:
 		"a wrapping tooltip line breaks onto more lines")
 	_capture("user://stock_interface_tooltip.png")
 	_stock.run_lua("GameTooltip:Hide()")
+	# The newbie tip goes to the default corner at its own width, whatever tooltip came before.
+	var widths: Array[float] = []
+	for before: String in ["'ANCHOR_CURSOR'", "'ANCHOR_RIGHT'", "'ANCHOR_NONE'"]:
+		_stock.run_lua("GameTooltip:SetOwner(UIParent, %s) GameTooltip:SetText(string.rep('wide ', 40)) GameTooltip:Show()" % before)
+		await _frames(2)
+		_stock.run_widget_script(_stock.get_widget_id("PlayerFrame"), "OnEnter")
+		await _frames(2)
+		var tooltip: Rect2 = _stock.get_widget_rect("GameTooltip")
+		var text: Rect2 = _stock.get_widget_rect("GameTooltipTextLeft2")
+		_check(tooltip.encloses(text), "the portrait tip holds its text after " + before)
+		_check(tooltip.end.x > _stock.size.x * 0.9 and tooltip.end.y > _stock.size.y * 0.75,
+			"the portrait tip sits in the lower right after " + before)
+		widths.append(tooltip.size.x)
+		_capture("user://stock_interface_tooltip.png")
+		_stock.run_widget_script(_stock.get_widget_id("PlayerFrame"), "OnLeave")
+	_check(is_equal_approx(widths.min(), widths.max()), "the portrait tip keeps one width")
 	_capture("user://stock_interface_hud.png")
 	for error: String in _stock.get_errors():
 		_failures.append("Lua: " + error)
