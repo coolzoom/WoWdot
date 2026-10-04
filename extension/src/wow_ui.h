@@ -190,6 +190,7 @@ public:
 		FontInfo font;
 		String text;
 		bool nonspacewrap = false;
+		bool tooltip_wrap = false; // A tooltip line added with the wrap flag.
 		int max_lines = 0;
 		TextLayout layout;
 
@@ -424,7 +425,7 @@ public:
 	void set_text(int id, const String &text);
 	void set_texture(int id, const String &file);
 	void set_font_string_font(int id, const FontInfo &font);
-	void tooltip_add_line(int id, const String &left, const String &right, const Color &left_color, const Color &right_color);
+	void tooltip_add_line(int id, const String &left, const String &right, const Color &left_color, const Color &right_color, bool wrap = false);
 	void tooltip_clear(int id);
 	void tooltip_show(int id);
 	void message_add(int id, const String &text, const Color &color, int message_id);

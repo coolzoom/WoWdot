@@ -910,7 +910,14 @@ void WowUI::apply_child(int id, const WowXmlNode &child) {
 		}
 	} else if (tag == "Frames") {
 		for (const auto &frame : child.children) {
-			build(*frame, id, false, true);
+			// A nested frame may name another parent, as the latency button over the menu bar does.
+			int parent = id;
+			std::string parent_name = frame->get("parent");
+			if (!parent_name.empty()) {
+				int named = find(resolve_name(godot_string(parent_name), id));
+				parent = named >= 0 ? named : id;
+			}
+			build(*frame, parent, false, true);
 		}
 	} else if (tag == "Scripts") {
 		String owner = w->name.is_empty() ? String("anonymous ") + w->type : w->name;

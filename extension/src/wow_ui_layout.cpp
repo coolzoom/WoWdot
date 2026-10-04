@@ -14,6 +14,8 @@ namespace godot {
 namespace {
 
 constexpr int NO_REL = -9;
+// The narrowest a wrapping tooltip line runs before it breaks, in screen units.
+constexpr float TOOLTIP_WRAP_WIDTH = 250.0f;
 
 Vector2 point_at(int point, float left, float bottom, float right, float top) {
 	float x = point == WowUI::TOPLEFT || point == WowUI::LEFT || point == WowUI::BOTTOMLEFT ? left : point == WowUI::TOPRIGHT || point == WowUI::RIGHT || point == WowUI::BOTTOMRIGHT ? right : (left + right) * 0.5f;
@@ -385,6 +387,7 @@ void WowUI::layout_tooltip(Widget &tooltip) {
 	float height = 0.0f;
 	std::vector<int> rights;
 	std::vector<int> lefts;
+	std::vector<int> wrapped;
 	for (int i = 1; i <= tooltip.line_count; ++i) {
 		String index = String::num_int64(i);
 		int left = find(tooltip.name + "TextLeft" + index);
@@ -393,6 +396,10 @@ void WowUI::layout_tooltip(Widget &tooltip) {
 			continue;
 		}
 		Widget &l = *widgets[left];
+		if (l.tooltip_wrap) {
+			wrapped.push_back(left);
+			continue;
+		}
 		float line = text_width(l);
 		if (Widget *r = widget(right); r && r->shown && !r->text.is_empty()) {
 			line += text_width(*r) + 20.0f;
@@ -400,7 +407,22 @@ void WowUI::layout_tooltip(Widget &tooltip) {
 			lefts.push_back(left);
 		}
 		widest = std::max(widest, line);
-		height += text_height(left) + (i > 1 ? 2.0f : 0.0f);
+	}
+	// Wrapped lines fill the width the other lines set, but never narrower than the stock tips read.
+	float wrap_width = std::max(widest, std::max(TOOLTIP_WRAP_WIDTH, tooltip.min_width - 20.0f));
+	for (int left : wrapped) {
+		Widget &l = *widgets[left];
+		float natural = text_width(l);
+		l.has_width = natural > wrap_width;
+		l.width = l.has_width ? wrap_width : 0.0f;
+		reset_layout(l);
+		widest = std::max(widest, std::min(natural, wrap_width));
+	}
+	for (int i = 1; i <= tooltip.line_count; ++i) {
+		int left = find(tooltip.name + "TextLeft" + String::num_int64(i));
+		if (left >= 0) {
+			height += text_height(left) + (i > 1 ? 2.0f : 0.0f);
+		}
 	}
 	float width = std::max(widest + 20.0f, tooltip.min_width);
 	tooltip.width = width;

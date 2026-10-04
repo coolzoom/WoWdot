@@ -2096,7 +2096,7 @@ struct WowUILua {
 		{ "AddLine", [](lua_State *L) -> int {
 			 SELF;
 			 Color color(num(L, 3, 1.0f), num(L, 4, 0.82f), num(L, 5, 0.0f), 1.0f);
-			 ui_->tooltip_add_line(id_, lua_isstring(L, 2) ? to_string(L, 2) : String(), String(), color, color);
+			 ui_->tooltip_add_line(id_, lua_isstring(L, 2) ? to_string(L, 2) : String(), String(), color, color, flag(L, 6));
 			 return 0;
 		 } },
 		{ "AddDoubleLine", [](lua_State *L) -> int {
@@ -2110,7 +2110,7 @@ struct WowUILua {
 			 SELF;
 			 ui_->tooltip_clear(id_);
 			 Color color(num(L, 3, 1.0f), num(L, 4, 0.82f), num(L, 5, 0.0f), 1.0f);
-			 ui_->tooltip_add_line(id_, lua_isstring(L, 2) ? to_string(L, 2) : String(), String(), color, color);
+			 ui_->tooltip_add_line(id_, lua_isstring(L, 2) ? to_string(L, 2) : String(), String(), color, color, flag(L, 7));
 			 ui_->tooltip_show(id_);
 			 return 0;
 		 } },
@@ -2996,6 +2996,8 @@ void WowUI::tooltip_clear(int id) {
 			int line = find(w->name + side + String::num_int64(i));
 			if (line >= 0) {
 				widgets[line]->text = String();
+				widgets[line]->tooltip_wrap = false;
+				widgets[line]->has_width = false;
 				reset_layout(*widgets[line]);
 				set_shown(line, false);
 			}
@@ -3005,7 +3007,7 @@ void WowUI::tooltip_clear(int id) {
 	invalidate();
 }
 
-void WowUI::tooltip_add_line(int id, const String &left, const String &right, const Color &left_color, const Color &right_color) {
+void WowUI::tooltip_add_line(int id, const String &left, const String &right, const Color &left_color, const Color &right_color, bool wrap) {
 	Widget *w = widget(id);
 	if (!w || w->name.is_empty()) {
 		return;
@@ -3044,6 +3046,8 @@ void WowUI::tooltip_add_line(int id, const String &left, const String &right, co
 	Widget &l = *widgets[left_id];
 	l.text = left;
 	l.font.color = left_color;
+	l.tooltip_wrap = wrap;
+	l.has_width = false;
 	reset_layout(l);
 	set_shown(left_id, true);
 	Widget &r = *widgets[right_id];
