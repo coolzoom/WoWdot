@@ -462,6 +462,8 @@ public:
 	void set_disk_root(const String &p_root) { disk_root = p_root; }
 	String get_disk_root() const { return disk_root; }
 	bool has_file(const String &path) const;
+	// The loose file that overrides an archive path, or empty when the archive copy is used.
+	String get_disk_file(const String &path) const;
 	bool load_toc(const String &path);
 	bool load_xml(const String &path) { return load_xml_file(path); }
 	PackedStringArray get_addons() const;

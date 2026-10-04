@@ -184,19 +184,58 @@ PackedStringArray WowUI::get_missing() const {
 
 // Files.
 
+namespace {
+
+// The stock client treats interface paths case-insensitively, so a loose file must still win on a
+// case-sensitive filesystem when the TOC spells it differently.
+String disk_path(const String &disk_root, const String &path) {
+	if (disk_root.is_empty()) {
+		return String();
+	}
+	String relative = path.replace("\\", "/");
+	String exact = disk_root.path_join(relative);
+	if (FileAccess::file_exists(exact)) {
+		return exact;
+	}
+	PackedStringArray parts = relative.split("/", false);
+	String current = disk_root;
+	for (int i = 0; i < parts.size(); ++i) {
+		bool last = i == parts.size() - 1;
+		PackedStringArray names = last ? DirAccess::get_files_at(current) : DirAccess::get_directories_at(current);
+		String found;
+		for (const String &name : names) {
+			if (name.nocasecmp_to(parts[i]) == 0) {
+				found = name;
+				break;
+			}
+		}
+		if (found.is_empty()) {
+			return String();
+		}
+		current = current.path_join(found);
+	}
+	return current;
+}
+
+} // namespace
+
 bool WowUI::has_file(const String &path) const {
-	if (!disk_root.is_empty() && FileAccess::file_exists(disk_root.path_join(path.replace("\\", "/")))) {
+	if (!disk_path(disk_root, path).is_empty()) {
 		return true;
 	}
 	return archive.is_valid() && archive->has(path);
+}
+
+String WowUI::get_disk_file(const String &path) const {
+	return disk_path(disk_root, path);
 }
 
 namespace {
 
 bool read_bytes(const Ref<WowArchive> &archive, const String &disk_root, const String &path, std::string &r_out) {
 	if (!disk_root.is_empty()) {
-		String disk = disk_root.path_join(path.replace("\\", "/"));
-		if (FileAccess::file_exists(disk)) {
+		String disk = disk_path(disk_root, path);
+		if (!disk.is_empty()) {
 			PackedByteArray bytes = FileAccess::get_file_as_bytes(disk);
 			r_out.assign(reinterpret_cast<const char *>(bytes.ptr()), bytes.size());
 			return true;
@@ -1227,7 +1266,7 @@ PackedStringArray WowUI::get_addons() const {
 		String dir = disk_root.path_join("Interface/AddOns");
 		PackedStringArray folders = DirAccess::get_directories_at(dir);
 		for (const String &folder : folders) {
-			if (FileAccess::file_exists(dir.path_join(folder).path_join(folder + String(".toc")))) {
+			if (!disk_path(dir, folder.path_join(folder + String(".toc"))).is_empty()) {
 				add(folder);
 			}
 		}
@@ -1446,6 +1485,7 @@ void WowUI::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_disk_root", "root"), &WowUI::set_disk_root);
 	ClassDB::bind_method(D_METHOD("get_disk_root"), &WowUI::get_disk_root);
 	ClassDB::bind_method(D_METHOD("has_file", "path"), &WowUI::has_file);
+	ClassDB::bind_method(D_METHOD("get_disk_file", "path"), &WowUI::get_disk_file);
 	ClassDB::bind_method(D_METHOD("load_toc", "path"), &WowUI::load_toc);
 	ClassDB::bind_method(D_METHOD("load_xml", "path"), &WowUI::load_xml);
 	ClassDB::bind_method(D_METHOD("get_addons"), &WowUI::get_addons);

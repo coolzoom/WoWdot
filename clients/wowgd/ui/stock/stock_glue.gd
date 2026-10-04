@@ -10,6 +10,7 @@ const SETTINGS_SECTION: String = "login"
 const DEFAULT_REALMLIST: String = "127.0.0.1"
 const AUTH_PORT: int = 3724
 const REALMLIST_FILE: String = "realmlist.wtf"
+const REALMLIST_CVAR: String = "realmList"
 const REALM_FLAG_OFFLINE: int = 0x02
 const REALM_FLAG_FULL: int = 0x80
 # RealmList.lua reads load 2 as full and -3 as recommended; anything else is the population.
@@ -69,6 +70,7 @@ func _ready() -> void:
 	session.character_created.connect(_on_character_created)
 	session.character_deleted.connect(_on_character_deleted)
 	session.character_login_failed.connect(_on_character_login_failed)
+	_set_realmlist_cvar(_realmlist())
 	load_toc(TOC)
 	fire_event("FRAMES_LOADED")
 	set_screen("login")
@@ -83,12 +85,20 @@ func auto_login(realmlist: String, account: String, password: String, character:
 	_auto_entering = true
 	_auto_character = character
 	if not realmlist.is_empty():
-		_launch_realmlist = realmlist
+		use_realmlist(realmlist)
 	_log_in(account, password)
 
 
 func use_realmlist(realmlist: String) -> void:
 	_launch_realmlist = realmlist
+	_set_realmlist_cvar(realmlist)
+
+
+# Interface files read and edit the address through the stock realmList CVar.
+func _set_realmlist_cvar(realmlist: String) -> void:
+	var values: Dictionary = get_cvars()
+	values[REALMLIST_CVAR] = realmlist
+	set_cvars(values)
 
 
 func _register_glue() -> void:
@@ -279,7 +289,12 @@ func _log_in(account: String, password: String) -> void:
 	if password.is_empty():
 		_message(WowStrings.get_text("LOGIN_ENTER_PASSWORD"))
 		return
-	var realmlist: String = _realmlist()
+	var realmlist: String = str(get_cvars().get(REALMLIST_CVAR, "")).strip_edges()
+	if realmlist.is_empty():
+		realmlist = _realmlist()
+	elif realmlist != _realmlist() and _launch_realmlist.is_empty():
+		_settings.set_value(SETTINGS_SECTION, "realmlist", realmlist)
+		_settings.save(SETTINGS_PATH)
 	var host: String = realmlist
 	var port: int = AUTH_PORT
 	if realmlist.count(":") == 1:

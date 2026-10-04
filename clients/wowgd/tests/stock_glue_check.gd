@@ -28,6 +28,13 @@ func _run() -> void:
 	await _frames(60)
 	_check(_stock.is_widget_visible("AccountLogin"), "the login screen shows")
 	_check(_stock.is_widget_visible("AccountLoginAccountEdit"), "the account box shows")
+	if not _stock.get_disk_file(StockGlue.TOC).is_empty():
+		print("stock_glue_check: GlueXML.toc overridden by ", _stock.get_disk_file(StockGlue.TOC))
+	if _stock.get_widget_id("AccountLoginServerEdit") >= 0:
+		_check(_stock.is_widget_visible("AccountLoginServerEdit"), "the server address box shows")
+		_stock.run_lua("AccountLoginServerEdit:SetText('10.0.0.5:3724')", "check")
+		_check(str(_stock.get_cvars().get("realmList")) == "10.0.0.5:3724",
+			"typing an address sets realmList")
 	_capture("user://stock_glue_login.png")
 	var session: WowSession = WowClient.session
 	session.state_changed.emit(WowSession.STATE_CHARACTER_LIST, "")
