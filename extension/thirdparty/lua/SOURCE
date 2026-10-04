@@ -1,0 +1,7 @@
+Lua 5.1.5 (MIT, see COPYRIGHT)
+from: https://www.lua.org/ftp/lua-5.1.5.tar.gz
+sha256: 2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333
+Kept: src/*.c and src/*.h without lua.c, luac.c and print.c; etc/lua.hpp.
+WoWdot changes:
+lvm.c: OP_TFORLOOP walks a table given in place of an iterator with next, as Lua 5.0 did, since the 1.12 interface writes `for k, v in t do`.
+luaconf.h: LUA_COMPAT_GETN defined, so table.setn works as the 1.12 interface expects.

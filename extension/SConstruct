@@ -21,6 +21,7 @@ thirdparty = [
 	"thirdparty/json/single_include/",
 	"thirdparty/zlib/",
 	"thirdparty/bzip2/",
+	"thirdparty/lua/",
 ]
 env.Append(CPPPATH=["src/", "wowee/include/"] + thirdparty)
 windows = env["platform"] == "windows"
@@ -60,6 +61,12 @@ tommath_env.Append(CCFLAGS=tommath_flags)
 for f in storm_sources:
 	uses_tommath = "/libtommath/" in f or f.endswith("/ltm_desc.c")
 	sources.append((tommath_env if uses_tommath else storm_env).SharedObject(f))
+
+# Lua 5.1 runs the stock interface's scripts; it is C and keeps its upstream flags.
+lua_env = env.Clone()
+if not windows:
+	lua_env.Append(CPPDEFINES=["LUA_USE_POSIX"])
+sources += [lua_env.SharedObject(f) for f in Glob("thirdparty/lua/*.c")]
 
 library = env.SharedLibrary(
 	"../shared/wowdot/bin/libwowdot{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),

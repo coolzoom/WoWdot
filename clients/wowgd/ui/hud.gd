@@ -79,6 +79,7 @@ var _chat_hover_time: float = 0.0
 var _item_ref_link: String = ""
 # An ItemRefTooltip entry still waiting on its item query.
 var _item_ref_pending: int = 0
+var _stock: StockInterface
 
 @onready var _ui_parent: Control = %UIParent
 @onready var _main_menu_bar: MainMenuBar = %MainMenuBar
@@ -289,6 +290,8 @@ func _ready() -> void:
 	WowClient.session.chat_received.connect(_chat_windows.add_chat)
 	_dock_chat_tabs()
 	_select_chat_frame(_chat_frames[0])
+	if StockUI.enabled():
+		_use_stock_interface()
 
 
 func _process(delta: float) -> void:
@@ -345,11 +348,75 @@ func open_trade_skill(spell_id: int) -> bool:
 func show_player(guid: int) -> void:
 	_player_frame.show_unit(guid)
 	_load_chat_windows(guid)
+	if _stock:
+		_stock.show_player(guid)
 
 
 func show_target(guid: int) -> void:
 	_target_frame.show_unit(guid)
 	ActionButton.target = guid
+	if _stock:
+		_stock.show_target(guid)
+
+
+# The stock FrameXML draws the HUD under the windows, which stay these scenes.
+# The frames it replaces stay in the tree, unseen and unclickable, since target() reads one.
+func _use_stock_interface() -> void:
+	_stock = StockInterface.new()
+	_stock.name = "StockInterface"
+	_stock.hud = self
+	for frame: Control in [
+		_main_menu_bar, _player_frame, _target_frame, _party, _casting_bar, _buffs, _errors,
+		_raid_warning, _side_bars, _temp_enchants, _chat_frames[0], _chat_frames[1],
+	]:
+		frame.modulate.a = 0.0
+		_ignore_mouse(frame)
+		frame.child_entered_tree.connect(func(child: Node) -> void: _ignore_mouse(child))
+	_party.group_changed.connect(_stock.on_group_changed)
+	_party.raid_changed.connect(_stock.on_group_changed)
+	var layer: Node = get_parent()
+	layer.add_child.call_deferred(_stock)
+	layer.move_child.call_deferred(_stock, get_index())
+
+
+func _ignore_mouse(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in node.get_children():
+		_ignore_mouse(child)
+
+
+# The stock micro buttons, bag buttons and Toggle functions open these windows.
+func open_stock_panel(panel: String, arg: Variant) -> void:
+	const CHARACTER_TABS: Dictionary[String, CharacterFrame.Tab] = {
+		"PetPaperDollFrame": CharacterFrame.Tab.PET, "SkillFrame": CharacterFrame.Tab.SKILLS,
+		"ReputationFrame": CharacterFrame.Tab.REPUTATION, "HonorFrame": CharacterFrame.Tab.HONOR,
+	}
+	match panel:
+		"character":
+			_toggle_character(CHARACTER_TABS.get(str(arg), CharacterFrame.Tab.CHARACTER))
+		"spellbook":
+			_on_panel_toggled(MainMenuBar.GamePanel.SPELLBOOK)
+		"talents":
+			_on_panel_toggled(MainMenuBar.GamePanel.TALENTS)
+		"quest_log":
+			_on_panel_toggled(MainMenuBar.GamePanel.QUEST_LOG)
+		"social":
+			_on_panel_toggled(MainMenuBar.GamePanel.SOCIAL)
+		"world_map":
+			_on_panel_toggled(MainMenuBar.GamePanel.WORLD_MAP)
+		"help":
+			_on_panel_toggled(MainMenuBar.GamePanel.HELP)
+		"game_menu":
+			_on_panel_toggled(MainMenuBar.GamePanel.GAME_MENU)
+		"backpack":
+			_panels.toggle_backpack()
+		"bag":
+			_panels.toggle_bag(int(arg) if arg != null else 1)
+		"keyring":
+			_panels.toggle_bag(Inventory.KEYRING)
+		"all_bags":
+			_panels.open_all_bags()
 
 
 func target() -> int:
@@ -548,6 +615,8 @@ func add_chat_line(text: String, color: Color = Color.WHITE, group: String = "SA
 
 func add_system_line(text: String) -> void:
 	_chat_windows.add_line(text, ChatFrame.COLORS[WowSession.CHAT_SYSTEM], "SYSTEM")
+	if _stock:
+		_stock.add_system_line(text)
 
 
 func show_location(map_dir: String, wow_position: Vector3, facing: float) -> void:
@@ -565,6 +634,8 @@ func show_area(area_id: int, player_race: int, map_id: int) -> void:
 	(%WorldStateHeader as WorldStateHeader).show_place(map_id, area_id)
 	(_panels.get_node("%WorldStateScoreFrame") as WorldStateScoreFrame).show_map(map_id)
 	_minimap.show_area(area_id, player_race)
+	if _stock:
+		_stock.show_area(area_id)
 
 
 func ask_release(on_release: Callable, on_self_resurrect: Callable = Callable()) -> void:
@@ -597,10 +668,14 @@ func ask_spirit_healer(on_accept: Callable) -> void:
 
 func show_error(text: String) -> void:
 	_errors.add_message(text, ERROR_COLOR)
+	if _stock:
+		_stock.show_error(text)
 
 
 func show_notice(text: String) -> void:
 	_errors.add_message(text, NOTICE_COLOR)
+	if _stock:
+		_stock.show_notice(text)
 
 
 func _exact(event: InputEvent, action: String) -> bool:

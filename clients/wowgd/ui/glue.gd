@@ -49,6 +49,8 @@ var _launch_realmlist: String = ""
 var _auto_character: String = ""
 # The character just created, selected once the new list arrives.
 var _created_name: String = ""
+# The game's own GlueXML, when the stock interface is on; the scenes above stay unused.
+var _stock: StockGlue
 
 @onready var _parent: Control = %GlueParent
 @onready var _login: LoginScreen = %AccountLogin
@@ -64,6 +66,9 @@ func _ready() -> void:
 	WowFonts.apply()
 	resized.connect(_fit)
 	_fit()
+	if StockUI.enabled():
+		_use_stock_glue()
+		return
 	_settings.load(SETTINGS_PATH)
 	_realm_name = _settings.get_value(SETTINGS_SECTION, "realm", "")
 	_login.fill(_saved_realmlist(), _settings.get_value(SETTINGS_SECTION, "account", ""))
@@ -103,6 +108,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func auto_login(realmlist: String, account: String, password: String, character: String) -> void:
+	if _stock:
+		_stock.auto_login(realmlist, account, password, character)
+		return
 	_auto_entering = true
 	_auto_character = character
 	_login.fill(realmlist if not realmlist.is_empty() else _saved_realmlist(), account, password)
@@ -110,6 +118,9 @@ func auto_login(realmlist: String, account: String, password: String, character:
 
 
 func use_realmlist(realmlist: String) -> void:
+	if _stock:
+		_stock.use_realmlist(realmlist)
+		return
 	_launch_realmlist = realmlist
 	_login.fill(realmlist, _settings.get_value(SETTINGS_SECTION, "account", ""))
 
@@ -135,6 +146,14 @@ func _fit() -> void:
 
 func _show_screen(screen: Screen) -> void:
 	_screen = screen
+	if _stock:
+		_loading.visible = screen == Screen.LOADING
+		_stock.visible = screen != Screen.LOADING
+		if screen == Screen.LOADING:
+			WowAssets.audio.stop_music()
+		else:
+			WowAssets.audio.stop_ambience()
+		return
 	_login.visible = screen == Screen.LOGIN
 	_select.visible = screen == Screen.CHARACTER_SELECT
 	_create.visible = screen == Screen.CHARACTER_CREATE
@@ -144,6 +163,27 @@ func _show_screen(screen: Screen) -> void:
 	else:
 		WowAssets.audio.stop_ambience()
 		WowAssets.audio.play_music(MUSIC)
+
+
+func _use_stock_glue() -> void:
+	for screen: Control in [_login, _select, _create, _realm_list, _dialog] + _options:
+		screen.hide()
+		screen.process_mode = Node.PROCESS_MODE_DISABLED
+	_stock = StockGlue.new()
+	_stock.name = "StockGlue"
+	add_child(_stock)
+	move_child(_stock, _parent.get_index())
+	_stock.world_requested.connect(func(map_id: int) -> void: show_loading(map_id))
+	var session: WowSession = WowClient.session
+	session.state_changed.connect(_on_stock_state_changed)
+	session.character_login_failed.connect(func(_code: int) -> void:
+		_show_screen(Screen.CHARACTER_SELECT))
+	_show_screen(Screen.LOGIN)
+
+
+func _on_stock_state_changed(state: WowSession.State, _message: String) -> void:
+	if state in [WowSession.STATE_CHARACTER_LIST, WowSession.STATE_FAILED, WowSession.STATE_DISCONNECTED]:
+		_show_screen(Screen.CHARACTER_SELECT if state == WowSession.STATE_CHARACTER_LIST else Screen.LOGIN)
 
 
 func _show_options(options: Control) -> void:

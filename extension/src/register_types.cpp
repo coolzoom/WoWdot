@@ -6,6 +6,7 @@
 #include "wow_session.h"
 #include "wow_streamer.h"
 #include "wow_texture.h"
+#include "wow_ui.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/class_db.hpp>
@@ -30,6 +31,7 @@ static void initialize_wowgd_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(WowPortals);
 	GDREGISTER_CLASS(WowSession);
 	GDREGISTER_CLASS(WowTexture);
+	GDREGISTER_CLASS(WowUI);
 	GDREGISTER_ABSTRACT_CLASS(WowCoords);
 }
 

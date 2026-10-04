@@ -14,6 +14,7 @@ Keep these notices with every source and binary distribution.
 | bzip2 | `extension/thirdparty/bzip2/` (submodule) | bzip2 license, see its `LICENSE` |
 | GLM | `extension/thirdparty/glm/` (submodule) | MIT |
 | nlohmann/json | `extension/thirdparty/json/` (submodule) | MIT |
+| Lua 5.1.5 | `extension/thirdparty/lua/` | MIT, [extension/thirdparty/lua/COPYRIGHT](extension/thirdparty/lua/COPYRIGHT) |
 | Godot Engine | exported builds | MIT, plus the engine's own third-party notices |
 | GDDocs, with its bundled copy of marked | `clients/wowgd/addons/gddocs/` (documentation tool, left out of exports) | MIT |
 | Godot logo, adapted for the WoWdot logo | `wowdot_logo.png`, `website/` | CC BY 4.0, by Andrea Calabró |
